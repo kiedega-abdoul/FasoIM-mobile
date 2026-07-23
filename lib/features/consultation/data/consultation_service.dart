@@ -12,11 +12,19 @@ class ConsultationService {
     );
 
     final values = _extractList(payload);
-    return values
-        .whereType<Map>()
-        .map((item) => ArrivalSession.fromJson(Map<String, dynamic>.from(item)))
-        .where((session) => session.id > 0)
-        .toList(growable: false);
+    final sessions = <ArrivalSession>[];
+
+    for (final item in values) {
+      if (item is! Map) continue;
+
+      final session = ArrivalSession.fromJson(Map<String, dynamic>.from(item));
+
+      if (session.id > 0 && session.code.isNotEmpty) {
+        sessions.add(session);
+      }
+    }
+
+    return sessions;
   }
 
   Future<ArrivalInformation> search({
@@ -27,7 +35,7 @@ class ConsultationService {
     final payload = await _client.post(
       '/api/documents/public/arrivee/',
       body: <String, Object?>{
-        'type_immerge': session.typeImmerge,
+        'type_immerge': session.targetAudience,
         'identifiant': identifier.trim(),
         'session_code': session.code,
         'date_naissance': birthDate.trim(),
@@ -45,10 +53,12 @@ class ConsultationService {
 
   List<dynamic> _extractList(dynamic payload) {
     if (payload is List) return payload;
+
     if (payload is Map) {
-      final results = payload['results'] ?? payload['data'];
-      if (results is List) return results;
+      final values = payload['results'] ?? payload['data'];
+      if (values is List) return values;
     }
+
     throw const ApiException(
       'Le serveur a renvoyé une liste de sessions invalide.',
     );

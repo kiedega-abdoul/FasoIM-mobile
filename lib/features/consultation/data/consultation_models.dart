@@ -40,41 +40,55 @@ class ArrivalSession {
 
   String get identifierLabel {
     switch (targetAudience) {
-      case 'BAC':
       case 'BEPC':
-        return 'Numéro PV $targetAudience';
+      case 'BAC':
+      case 'EXAMEN':
+        return 'Numéro de PV';
       case 'CONCOURS':
         return 'Numéro de récépissé';
       case 'SELECTIONNE':
+      case 'SELECTION':
         return 'Matricule ou référence de sélection';
+      case 'VOLONTAIRE':
+        return 'Code de suivi';
       default:
-        return 'Code de suivi de la demande';
+        return 'Code FasoIM ou identifiant officiel';
     }
   }
 
   String get identifierHint {
     switch (targetAudience) {
-      case 'BAC':
       case 'BEPC':
-        return 'Saisissez votre numéro PV';
+      case 'BAC':
+      case 'EXAMEN':
+        return 'Ex. 12345678';
       case 'CONCOURS':
-        return 'Saisissez votre numéro de récépissé';
+        return 'Ex. REC-2026-00125';
       case 'SELECTIONNE':
-        return 'Saisissez votre matricule ou votre référence';
+      case 'SELECTION':
+        return 'Ex. MAT-2026-001';
+      case 'VOLONTAIRE':
+        return 'Ex. VOL-2026-XXXX';
       default:
-        return 'Saisissez votre code de suivi';
+        return 'Ex. IP2026BAC0100001';
     }
   }
 
-  String get typeImmerge {
+  String get identifierField {
     switch (targetAudience) {
-      case 'BAC':
       case 'BEPC':
+      case 'BAC':
+      case 'EXAMEN':
+        return 'numero_pv';
       case 'CONCOURS':
+        return 'numero_recepisse';
       case 'SELECTIONNE':
-        return targetAudience;
+      case 'SELECTION':
+        return 'reference_selection';
+      case 'VOLONTAIRE':
+        return 'code_suivi';
       default:
-        return 'VOLONTAIRE';
+        return 'code_fasoim';
     }
   }
 }
@@ -86,7 +100,6 @@ class ArrivalInformation {
     required this.assignment,
     required this.centerInstructions,
     required this.kits,
-    required this.documentsRequired,
     this.accommodation,
   });
 
@@ -94,14 +107,23 @@ class ArrivalInformation {
     final root = _unwrap(json);
 
     return ArrivalInformation(
-      immerge: _asMap(root['immerge']),
+      immerge: _asMap(
+        root['immerge'] ?? root['participant'] ?? root['identite'],
+      ),
       session: _asMap(root['session']),
-      assignment: _asMap(root['affectation']),
-      accommodation: _nullableMap(root['hebergement']),
-      centerInstructions: _asMap(root['consignes_centre']),
-      kits: _asListOfMaps(root['kits_a_apporter']),
-      documentsRequired: _asStringList(
-        _asMap(root['session'])['documents_exiges'],
+      assignment: _asMap(
+        root['affectation'] ??
+            root['affectation_centre'] ??
+            root['organisation'],
+      ),
+      accommodation: _nullableMap(root['hebergement'] ?? root['logement']),
+      centerInstructions: _asMap(
+        root['consignes_centre'] ??
+            root['instructions_centre'] ??
+            root['consignes'],
+      ),
+      kits: _asListOfMaps(
+        root['kits_a_apporter'] ?? root['articles_a_apporter'] ?? root['kits'],
       ),
     );
   }
@@ -112,7 +134,6 @@ class ArrivalInformation {
   final Map<String, dynamic>? accommodation;
   final Map<String, dynamic> centerInstructions;
   final List<Map<String, dynamic>> kits;
-  final List<String> documentsRequired;
 
   String text(Map<String, dynamic>? source, String key) {
     final value = source?[key];
@@ -152,13 +173,5 @@ List<Map<String, dynamic>> _asListOfMaps(dynamic value) {
   return value
       .whereType<Map>()
       .map((item) => Map<String, dynamic>.from(item))
-      .toList(growable: false);
-}
-
-List<String> _asStringList(dynamic value) {
-  if (value is! List) return const [];
-  return value
-      .map((item) => item?.toString().trim() ?? '')
-      .where((item) => item.isNotEmpty)
       .toList(growable: false);
 }

@@ -77,9 +77,9 @@ class _PublicHomePageState extends State<PublicHomePage> {
                 Text(
                   'Menu FasoIM',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.primaryDark,
-                      ),
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primaryDark,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 _MenuItem(
@@ -100,7 +100,7 @@ class _PublicHomePageState extends State<PublicHomePage> {
                 ),
                 _MenuItem(
                   icon: Icons.verified_outlined,
-                  title: 'Vérifier une attestation',
+                  title: 'Attestation',
                   onTap: () {
                     Navigator.pop(context);
                     _goTo('/certificate');
@@ -113,7 +113,9 @@ class _PublicHomePageState extends State<PublicHomePage> {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('FasoIM facilite la consultation et le suivi de l’immersion patriotique.'),
+                        content: Text(
+                          'FasoIM facilite la consultation et le suivi de l’immersion patriotique.',
+                        ),
                       ),
                     );
                   },
@@ -151,10 +153,10 @@ class _PublicHomePageState extends State<PublicHomePage> {
                   Text(
                     'Vos services essentiels',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.4,
-                        ),
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.4,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   const Text(
@@ -183,9 +185,9 @@ class _PublicHomePageState extends State<PublicHomePage> {
                   const SizedBox(height: 14),
                   _ServiceCard(
                     icon: Icons.verified_outlined,
-                    title: 'Vérifier une attestation',
+                    title: 'Attestation',
                     description:
-                        'Vérifiez une attestation FasoIM par code ou par QR code.',
+                        'Vérifiez une attestation ou téléchargez votre attestation publiée.',
                     onTap: () => _goTo('/certificate'),
                   ),
                   const SizedBox(height: 28),
@@ -225,7 +227,8 @@ class _HeroHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final heroHeight = screenWidth < 380 ? 500.0 : 470.0;
-    final imageCacheWidth = (screenWidth * MediaQuery.devicePixelRatioOf(context)).round();
+    final imageCacheWidth =
+        (screenWidth * MediaQuery.devicePixelRatioOf(context)).round();
 
     return Column(
       children: [
@@ -285,7 +288,10 @@ class _HeroHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.28),
                         borderRadius: BorderRadius.circular(99),
@@ -304,7 +310,8 @@ class _HeroHeader extends StatelessWidget {
                     const Spacer(),
                     Text(
                       'Préparez et suivez votre immersion patriotique en toute simplicité',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
                             height: 1.07,
@@ -346,7 +353,9 @@ class _HeroHeader extends StatelessWidget {
                               foregroundColor: Colors.white,
                               backgroundColor: const Color(0x6600331C),
                               side: const BorderSide(color: Colors.white70),
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
                             ),
                             child: const Text(
                               'Demande volontaire',
@@ -363,10 +372,12 @@ class _HeroHeader extends StatelessWidget {
                               foregroundColor: Colors.white,
                               backgroundColor: const Color(0x6600331C),
                               side: const BorderSide(color: Colors.white70),
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
                             ),
                             child: const Text(
-                              'Vérifier attestation',
+                              'Attestation',
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -384,7 +395,9 @@ class _HeroHeader extends StatelessWidget {
                           width: currentImage == index ? 22 : 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: currentImage == index ? Colors.white : Colors.white54,
+                            color: currentImage == index
+                                ? Colors.white
+                                : Colors.white54,
                             borderRadius: BorderRadius.circular(99),
                           ),
                         ),
@@ -468,7 +481,10 @@ class _ServiceCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.primaryDark),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.primaryDark,
+              ),
             ],
           ),
         ),
@@ -581,10 +597,7 @@ class _MenuItem extends StatelessWidget {
         ),
         child: Icon(icon, color: AppColors.primary),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w800),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: onTap,
     );

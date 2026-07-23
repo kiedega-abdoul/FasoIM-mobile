@@ -13,6 +13,47 @@ class ConsultationPage extends StatefulWidget {
   State<ConsultationPage> createState() => _ConsultationPageState();
 }
 
+class _ConsultationCategory {
+  const _ConsultationCategory({
+    required this.type,
+    required this.label,
+    required this.description,
+    required this.icon,
+  });
+
+  final String type;
+  final String label;
+  final String description;
+  final IconData icon;
+}
+
+const _categories = <_ConsultationCategory>[
+  _ConsultationCategory(
+    type: 'examen',
+    label: 'Examens',
+    description: 'BAC ou BEPC',
+    icon: Icons.school_outlined,
+  ),
+  _ConsultationCategory(
+    type: 'concours',
+    label: 'Concours',
+    description: 'Candidats admis aux concours',
+    icon: Icons.work_outline_rounded,
+  ),
+  _ConsultationCategory(
+    type: 'selectionne',
+    label: 'Personnes sélectionnées',
+    description: 'Sélections officielles',
+    icon: Icons.person_search_outlined,
+  ),
+  _ConsultationCategory(
+    type: 'volontaire',
+    label: 'Volontaires',
+    description: 'Demandes de volontariat acceptées',
+    icon: Icons.groups_outlined,
+  ),
+];
+
 class _ConsultationPageState extends State<ConsultationPage> {
   final _formKey = GlobalKey<FormState>();
   final _identifierController = TextEditingController();
@@ -26,33 +67,6 @@ class _ConsultationPageState extends State<ConsultationPage> {
   bool _loading = true;
   bool _searching = false;
   String? _error;
-
-  static const _categories = <_ConsultationCategory>[
-    _ConsultationCategory(
-      type: 'examen',
-      label: 'Examens',
-      description: 'BAC ou BEPC',
-      icon: Icons.school_outlined,
-    ),
-    _ConsultationCategory(
-      type: 'concours',
-      label: 'Concours',
-      description: 'Candidats admis aux concours',
-      icon: Icons.work_outline_rounded,
-    ),
-    _ConsultationCategory(
-      type: 'selectionne',
-      label: 'Personnes sélectionnées',
-      description: 'Sélections officielles',
-      icon: Icons.person_search_outlined,
-    ),
-    _ConsultationCategory(
-      type: 'volontaire',
-      label: 'Volontaires',
-      description: 'Demandes de volontariat acceptées',
-      icon: Icons.groups_2_outlined,
-    ),
-  ];
 
   @override
   void initState() {
@@ -83,8 +97,9 @@ class _ConsultationPageState extends State<ConsultationPage> {
     for (final session in _sessions) {
       if (session.id == _selectedSessionId) return session;
     }
-    if (_typeSessions.length == 1) return _typeSessions.first;
-    return null;
+
+    final rows = _typeSessions;
+    return rows.length == 1 ? rows.first : null;
   }
 
   Future<void> _loadSessions() async {
@@ -97,11 +112,16 @@ class _ConsultationPageState extends State<ConsultationPage> {
       final sessions = await _service.fetchSessions();
       if (!mounted) return;
 
-      final types = sessions.map((session) => session.sessionType).toSet();
+      final activeTypes = sessions
+          .map((session) => session.sessionType)
+          .where((type) => type.isNotEmpty)
+          .toSet()
+          .toList(growable: false);
+
       setState(() {
         _sessions = sessions;
-        if (types.length == 1) _selectedType = types.first;
-        if (sessions.length == 1) _selectedSessionId = sessions.first.id;
+        _selectedType = activeTypes.length == 1 ? activeTypes.first : null;
+        _selectedSessionId = sessions.length == 1 ? sessions.first.id : null;
       });
     } on ApiException catch (error) {
       if (!mounted) return;
@@ -115,9 +135,20 @@ class _ConsultationPageState extends State<ConsultationPage> {
     final rows = _sessions
         .where((session) => session.sessionType == type)
         .toList(growable: false);
+
     setState(() {
       _selectedType = type;
       _selectedSessionId = rows.length == 1 ? rows.first.id : null;
+      _identifierController.clear();
+      _birthDateController.clear();
+      _result = null;
+      _error = null;
+    });
+  }
+
+  void _chooseSession(ArrivalSession session) {
+    setState(() {
+      _selectedSessionId = session.id;
       _identifierController.clear();
       _birthDateController.clear();
       _result = null;
@@ -136,8 +167,9 @@ class _ConsultationPageState extends State<ConsultationPage> {
     });
   }
 
-  void _resetSearch() {
+  void _changeSession() {
     setState(() {
+      _selectedSessionId = null;
       _identifierController.clear();
       _birthDateController.clear();
       _result = null;
@@ -154,6 +186,7 @@ class _ConsultationPageState extends State<ConsultationPage> {
       initialDate: DateTime(now.year - 18),
       helpText: 'Sélectionner la date de naissance',
     );
+
     if (selected == null) return;
 
     final month = selected.month.toString().padLeft(2, '0');
@@ -168,6 +201,7 @@ class _ConsultationPageState extends State<ConsultationPage> {
     setState(() {
       _searching = true;
       _error = null;
+      _result = null;
     });
 
     try {
@@ -192,128 +226,149 @@ class _ConsultationPageState extends State<ConsultationPage> {
       title: 'Consulter mon immersion',
       subtitle:
           'Retrouvez rapidement votre centre, votre organisation et les consignes d’arrivée.',
-      body: _buildBody(),
+      body: Column(
+        children: [
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 48),
+              child: CircularProgressIndicator(),
+            )
+          else if (_sessions.isEmpty)
+            InfoCard(
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    color: AppColors.primary,
+                    size: 38,
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Aucune consultation ouverte',
+                    style: TextStyle(
+                      color: AppColors.primaryDark,
+                      fontSize: 21,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Les informations d’arrivée ne sont pas encore disponibles.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 14),
+                  OutlinedButton.icon(
+                    onPressed: _loadSessions,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Actualiser'),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            if (_availableCategories.length > 1 && _selectedType == null)
+              _buildCategoryChoices(),
+            if (_selectedType != null &&
+                _typeSessions.length > 1 &&
+                _selectedSession == null)
+              _buildSessionChoices(),
+            if (_selectedSession != null && _result == null)
+              _buildForm(_selectedSession!),
+          ],
+          if (_error != null) ...[
+            const SizedBox(height: 16),
+            _MessageCard(
+              icon: Icons.error_outline_rounded,
+              message: _error!,
+              isError: true,
+            ),
+          ],
+          if (_result != null) ...[
+            const SizedBox(height: 18),
+            _ArrivalResultCard(result: _result!),
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 60),
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    if (_sessions.isEmpty) {
-      return const InfoCard(
-        child: Column(
-          children: [
-            Icon(
-              Icons.info_outline_rounded,
-              size: 42,
-              color: AppColors.primary,
-            ),
-            SizedBox(height: 14),
-            Text(
-              'Aucune consultation ouverte',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                color: AppColors.primaryDark,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Les informations d’arrivée ne sont pas encore disponibles.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ],
-        ),
-      );
-    }
-
+  Widget _buildCategoryChoices() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (_availableCategories.length > 1 && _selectedType == null)
-          _buildCategories(),
-        if (_selectedType != null &&
-            _typeSessions.length > 1 &&
-            _selectedSession == null)
-          _buildExamChoice(),
-        if (_selectedSession != null && _result == null) _buildSearchForm(),
-        if (_error != null) ...[
-          const SizedBox(height: 16),
-          _MessageCard(
-            icon: Icons.error_outline_rounded,
-            message: _error!,
-            isError: true,
+        const Text(
+          'Choisissez votre catégorie',
+          style: TextStyle(
+            color: AppColors.primaryDark,
+            fontSize: 21,
+            fontWeight: FontWeight.w900,
           ),
-        ],
-        if (_result != null)
-          _ArrivalResultCard(result: _result!, onAnotherSearch: _resetSearch),
+        ),
+        const SizedBox(height: 14),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _availableCategories.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.02,
+          ),
+          itemBuilder: (context, index) {
+            final category = _availableCategories[index];
+            return InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () => _chooseType(category.type),
+              child: Ink(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: Icon(category.icon, color: AppColors.primary),
+                    ),
+                    const Spacer(),
+                    Text(
+                      category.label,
+                      style: const TextStyle(
+                        color: AppColors.primaryDark,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      category.description,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ],
     );
   }
 
-  Widget _buildCategories() {
-    return Column(
-      children: _availableCategories
-          .map(
-            (category) => Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: () => _chooseType(category.type),
-                child: InfoCard(
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(category.icon, color: AppColors.primary),
-                      ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              category.label,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.primaryDark,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              category.description,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right_rounded),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          )
-          .toList(growable: false),
-    );
-  }
-
-  Widget _buildExamChoice() {
+  Widget _buildSessionChoices() {
     return InfoCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,9 +376,9 @@ class _ConsultationPageState extends State<ConsultationPage> {
           const Text(
             'Quel examen avez-vous passé ?',
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
               color: AppColors.primaryDark,
+              fontSize: 21,
+              fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 6),
@@ -331,29 +386,37 @@ class _ConsultationPageState extends State<ConsultationPage> {
             'Choisissez BAC ou BEPC.',
             style: TextStyle(color: AppColors.textSecondary),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           for (final session in _typeSessions) ...[
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () =>
-                    setState(() => _selectedSessionId = session.id),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Text(session.targetAudienceLabel),
+                onPressed: () => _chooseSession(session),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 17),
+                ),
+                child: Text(
+                  session.targetAudienceLabel.isEmpty
+                      ? session.targetAudience
+                      : session.targetAudienceLabel,
+                  style: const TextStyle(fontSize: 16),
                 ),
               ),
             ),
             const SizedBox(height: 10),
           ],
+          if (_availableCategories.length > 1)
+            TextButton.icon(
+              onPressed: _changeCategory,
+              icon: const Icon(Icons.arrow_back_rounded),
+              label: const Text('Changer de catégorie'),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildSearchForm() {
-    final session = _selectedSession!;
-
+  Widget _buildForm(ArrivalSession session) {
     return InfoCard(
       child: Form(
         key: _formKey,
@@ -363,9 +426,9 @@ class _ConsultationPageState extends State<ConsultationPage> {
             const Text(
               'Retrouver mes informations d’arrivée',
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
                 color: AppColors.primaryDark,
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
               ),
             ),
             const SizedBox(height: 6),
@@ -373,11 +436,12 @@ class _ConsultationPageState extends State<ConsultationPage> {
               '${session.name} · ${session.targetAudienceLabel}',
               style: const TextStyle(color: AppColors.textSecondary),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             _Label(session.identifierLabel),
-            const SizedBox(height: 9),
+            const SizedBox(height: 10),
             TextFormField(
               controller: _identifierController,
+              textCapitalization: TextCapitalization.characters,
               decoration: InputDecoration(
                 hintText: session.identifierHint,
                 prefixIcon: const Icon(Icons.badge_outlined),
@@ -388,7 +452,7 @@ class _ConsultationPageState extends State<ConsultationPage> {
             ),
             const SizedBox(height: 16),
             const _Label('Date de naissance'),
-            const SizedBox(height: 9),
+            const SizedBox(height: 10),
             TextFormField(
               controller: _birthDateController,
               readOnly: true,
@@ -419,21 +483,23 @@ class _ConsultationPageState extends State<ConsultationPage> {
                     : const Icon(Icons.search_rounded),
                 label: Text(
                   _searching
-                      ? 'Consultation en cours…'
+                      ? 'Recherche en cours…'
                       : 'Consulter mes informations',
                 ),
               ),
             ),
-            if (_availableCategories.length > 1) ...[
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: _changeCategory,
-                  child: const Text('Changer de catégorie'),
-                ),
+            if (_typeSessions.length > 1)
+              TextButton.icon(
+                onPressed: _changeSession,
+                icon: const Icon(Icons.arrow_back_rounded),
+                label: const Text('Changer d’examen'),
               ),
-            ],
+            if (_availableCategories.length > 1)
+              TextButton.icon(
+                onPressed: _changeCategory,
+                icon: const Icon(Icons.grid_view_rounded),
+                label: const Text('Changer de catégorie'),
+              ),
           ],
         ),
       ),
@@ -442,110 +508,71 @@ class _ConsultationPageState extends State<ConsultationPage> {
 }
 
 class _ArrivalResultCard extends StatelessWidget {
-  const _ArrivalResultCard({
-    required this.result,
-    required this.onAnotherSearch,
-  });
+  const _ArrivalResultCard({required this.result});
 
   final ArrivalInformation result;
-  final VoidCallback onAnotherSearch;
 
   @override
   Widget build(BuildContext context) {
-    final assignment = result.assignment;
+    final identity = result.immerge;
     final session = result.session;
+    final assignment = result.assignment;
     final accommodation = result.accommodation;
+
     final centerInstructions = result.centerInstructions.entries
         .where((entry) => entry.value.toString().trim().isNotEmpty)
         .toList(growable: false);
 
     return Column(
       children: [
+        InfoCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.verified_rounded, color: AppColors.primary),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Dossier retrouvé',
+                      style: TextStyle(
+                        color: AppColors.primaryDark,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _DataRow('Nom complet', result.text(identity, 'nom_complet')),
+              _DataRow('Code FasoIM', result.text(identity, 'code_fasoim')),
+              _DataRow('Type', result.text(identity, 'type_immerge')),
+              _DataRow('Session', result.text(session, 'nom')),
+              _DataRow('Période', _period(session)),
+            ],
+          ),
+        ),
         const SizedBox(height: 16),
         InfoCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Informations d’arrivée',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
-                ),
+              const _SectionTitle(
+                icon: Icons.location_on_outlined,
+                title: 'Affectation et arrivée',
               ),
-              const SizedBox(height: 8),
-              Text(
-                result.text(result.immerge, 'nom_complet'),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.primaryDark,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                result.text(session, 'nom'),
-                style: const TextStyle(color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-        if (_hasAny([
-          result.text(assignment, 'region'),
-          result.text(assignment, 'centre'),
-          result.text(assignment, 'province'),
-          result.text(assignment, 'ville'),
-          result.text(assignment, 'adresse'),
-        ])) ...[
-          const SizedBox(height: 16),
-          _ResultSection(
-            icon: Icons.apartment_rounded,
-            title: 'Votre affectation',
-            children: [
+              const SizedBox(height: 14),
               _DataRow('Région', result.text(assignment, 'region')),
-              _DataRow('Centre d’accueil', result.text(assignment, 'centre')),
+              _DataRow('Centre', result.text(assignment, 'centre')),
               _DataRow(
-                'Localisation',
-                [
-                  result.text(assignment, 'province'),
-                  result.text(assignment, 'ville'),
-                  result.text(assignment, 'adresse'),
-                ].where((value) => value.isNotEmpty).join(' · '),
+                'Code du centre',
+                result.text(assignment, 'code_centre'),
               ),
-            ],
-          ),
-        ],
-        if (_hasAny([
-          result.text(assignment, 'section'),
-          result.text(assignment, 'groupe'),
-          result.text(accommodation, 'dortoir'),
-          result.text(accommodation, 'lit'),
-        ])) ...[
-          const SizedBox(height: 16),
-          _ResultSection(
-            icon: Icons.groups_rounded,
-            title: 'Votre organisation',
-            children: [
-              _DataRow('Section', result.text(assignment, 'section')),
-              _DataRow('Groupe', result.text(assignment, 'groupe')),
-              _DataRow('Dortoir', result.text(accommodation, 'dortoir')),
-              _DataRow('Lit', result.text(accommodation, 'lit')),
-            ],
-          ),
-        ],
-        if (_hasAny([
-          result.text(assignment, 'lieu_accueil'),
-          result.text(assignment, 'heure_accueil'),
-          result.text(assignment, 'horaires_generaux'),
-          result.text(session, 'date_debut'),
-          result.text(session, 'date_fin'),
-        ])) ...[
-          const SizedBox(height: 16),
-          _ResultSection(
-            icon: Icons.location_on_outlined,
-            title: 'Votre arrivée',
-            children: [
+              _DataRow('Province', result.text(assignment, 'province')),
+              _DataRow('Ville', result.text(assignment, 'ville')),
+              _DataRow('Adresse', result.text(assignment, 'adresse')),
               _DataRow(
                 'Lieu d’accueil',
                 result.text(assignment, 'lieu_accueil'),
@@ -554,87 +581,93 @@ class _ArrivalResultCard extends StatelessWidget {
                 'Heure d’accueil',
                 result.text(assignment, 'heure_accueil'),
               ),
-              _DataRow(
-                'Horaires généraux',
-                result.text(assignment, 'horaires_generaux'),
-              ),
-              _DataRow('Période', _period(result)),
+              _DataRow('Section', result.text(assignment, 'section')),
+              _DataRow('Groupe', result.text(assignment, 'groupe')),
+              if (accommodation != null) ...[
+                _DataRow('Dortoir', result.text(accommodation, 'dortoir')),
+                _DataRow('Lit', result.text(accommodation, 'lit')),
+              ],
             ],
           ),
-        ],
-        if (_hasAny([
-          result.text(session, 'directives_generales'),
-          result.text(session, 'consignes_generales'),
-        ])) ...[
+        ),
+        if (_hasText(result.text(session, 'directives_generales')) ||
+            _hasText(result.text(session, 'consignes_generales')) ||
+            centerInstructions.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _ResultSection(
-            icon: Icons.shield_outlined,
-            title: 'Consignes générales',
-            children: [
-              _TextBlock(
-                label: 'Directives',
-                value: result.text(session, 'directives_generales'),
-              ),
-              _TextBlock(
-                label: 'Consignes',
-                value: result.text(session, 'consignes_generales'),
-              ),
-            ],
-          ),
-        ],
-        if (result.documentsRequired.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _ResultSection(
-            icon: Icons.description_outlined,
-            title: 'Documents à présenter',
-            children: [
-              for (final document in result.documentsRequired)
-                _BulletLine(document),
-            ],
-          ),
-        ],
-        if (centerInstructions.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _ResultSection(
-            icon: Icons.assignment_outlined,
-            title: 'Consignes de votre centre',
-            children: [
-              for (final entry in centerInstructions)
-                _TextBlock(
-                  label: _instructionLabel(entry.key),
-                  value: entry.value.toString().trim(),
+          InfoCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SectionTitle(
+                  icon: Icons.assignment_outlined,
+                  title: 'Consignes officielles',
                 ),
-            ],
+                const SizedBox(height: 14),
+                _TextBlock(
+                  label: 'Directives générales',
+                  value: result.text(session, 'directives_generales'),
+                ),
+                _TextBlock(
+                  label: 'Consignes générales',
+                  value: result.text(session, 'consignes_generales'),
+                ),
+                for (final entry in centerInstructions)
+                  _TextBlock(
+                    label: _instructionLabel(entry.key),
+                    value: entry.value.toString(),
+                  ),
+              ],
+            ),
           ),
         ],
         if (result.kits.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _ResultSection(
-            icon: Icons.inventory_2_outlined,
-            title: 'Articles à apporter',
-            children: [
-              for (final kit in result.kits) _BulletLine(_kitLabel(kit)),
-            ],
+          InfoCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SectionTitle(
+                  icon: Icons.inventory_2_outlined,
+                  title: 'Articles à apporter',
+                ),
+                const SizedBox(height: 14),
+                for (final kit in result.kits)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.check_circle_outline_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _kitLabel(kit),
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: onAnotherSearch,
-            child: const Text('Faire une autre recherche'),
-          ),
-        ),
       ],
     );
   }
 
-  static bool _hasAny(List<String> values) =>
-      values.any((value) => value.trim().isNotEmpty);
+  static bool _hasText(String value) => value.trim().isNotEmpty;
 
-  static String _period(ArrivalInformation result) {
-    final start = result.text(result.session, 'date_debut');
-    final end = result.text(result.session, 'date_fin');
+  static String _period(Map<String, dynamic> session) {
+    final start = session['date_debut']?.toString().trim() ?? '';
+    final end = session['date_fin']?.toString().trim() ?? '';
     if (start.isEmpty && end.isEmpty) return '';
     if (end.isEmpty) return start;
     return '$start au $end';
@@ -643,82 +676,31 @@ class _ArrivalResultCard extends StatelessWidget {
   static String _instructionLabel(String key) {
     const labels = <String, String>{
       'accueil': 'Accueil',
-      'consignes_accueil': 'Accueil',
       'hebergement': 'Hébergement',
-      'consignes_hebergement': 'Hébergement',
-      'kits': 'Kits',
-      'consignes_kits': 'Kits',
+      'kits_a_apporter': 'Kits à apporter',
       'repas': 'Repas',
-      'consignes_repas': 'Repas',
       'discipline': 'Discipline',
-      'regles_discipline': 'Discipline',
       'directives_locales': 'Directives du centre',
-      'horaires_generaux': 'Horaires généraux',
     };
-    final label = labels[key];
-    if (label != null) return label;
-    final normalized = key.replaceAll('_', ' ');
-    return normalized.isEmpty
-        ? normalized
-        : '${normalized[0].toUpperCase()}${normalized.substring(1)}';
+    return labels[key] ?? key.replaceAll('_', ' ');
   }
 
   static String _kitLabel(Map<String, dynamic> kit) {
     final designation = kit['designation']?.toString().trim() ?? '';
-    final description = kit['description']?.toString().trim() ?? '';
     final quantity = kit['quantite']?.toString().trim() ?? '';
     final unit = kit['unite']?.toString().trim() ?? '';
-    final required = kit['obligatoire'] == true ? ' · Obligatoire' : '';
-    final quantityText = [
+    final required = kit['obligatoire'] == true ? ' — obligatoire' : '';
+    final description = kit['description']?.toString().trim() ?? '';
+    final quantityLabel = [
       quantity,
       unit,
     ].where((value) => value.isNotEmpty).join(' ');
-    final details = quantityText.isEmpty
-        ? ''
-        : '\nQuantité : $quantityText$required';
+    final base = quantityLabel.isEmpty
+        ? designation
+        : '$designation ($quantityLabel)';
     return description.isEmpty
-        ? '$designation$details'
-        : '$designation\n$description$details';
-  }
-}
-
-class _ConsultationCategory {
-  const _ConsultationCategory({
-    required this.type,
-    required this.label,
-    required this.description,
-    required this.icon,
-  });
-
-  final String type;
-  final String label;
-  final String description;
-  final IconData icon;
-}
-
-class _ResultSection extends StatelessWidget {
-  const _ResultSection({
-    required this.icon,
-    required this.title,
-    required this.children,
-  });
-
-  final IconData icon;
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return InfoCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SectionTitle(icon: icon, title: title),
-          const SizedBox(height: 14),
-          ...children,
-        ],
-      ),
-    );
+        ? '$base$required'
+        : '$base$required\n$description';
   }
 }
 
@@ -761,22 +743,27 @@ class _DataRow extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w700,
+          SizedBox(
+            width: 118,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w600,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -818,36 +805,6 @@ class _TextBlock extends StatelessWidget {
   }
 }
 
-class _BulletLine extends StatelessWidget {
-  const _BulletLine(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.check_circle_outline_rounded,
-            color: AppColors.primary,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(color: AppColors.textPrimary, height: 1.4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _MessageCard extends StatelessWidget {
   const _MessageCard({
     required this.icon,
@@ -861,15 +818,23 @@ class _MessageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isError ? Colors.red.shade700 : AppColors.primary;
-    return InfoCard(
+    final color = isError ? Colors.red.shade700 : AppColors.primaryDark;
+    final background = isError ? Colors.red.shade50 : AppColors.primaryLight;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: color),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(message, style: TextStyle(color: color, height: 1.4)),
+            child: Text(message, style: TextStyle(color: color, height: 1.35)),
           ),
         ],
       ),
@@ -887,8 +852,8 @@ class _Label extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        color: AppColors.textPrimary,
         fontWeight: FontWeight.w800,
+        color: AppColors.textPrimary,
       ),
     );
   }

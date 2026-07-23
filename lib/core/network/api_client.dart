@@ -38,8 +38,11 @@ class ApiClient {
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
 
       if (body != null) {
+        final encodedBody = utf8.encode(jsonEncode(body));
+
         request.headers.contentType = ContentType.json;
-        request.write(jsonEncode(body));
+        request.contentLength = encodedBody.length;
+        request.add(encodedBody);
       }
 
       final response = await request.close().timeout(ApiConfig.receiveTimeout);

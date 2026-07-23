@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_theme.dart';
+import '../features/certificates/presentation/certificate_download_page.dart';
+import '../features/certificates/presentation/certificate_home_page.dart';
 import '../features/certificates/presentation/certificate_verification_page.dart';
 import '../features/certificates/presentation/qr_scanner_page.dart';
 import '../features/consultation/presentation/consultation_page.dart';
@@ -23,25 +25,44 @@ class FasoImApp extends StatelessWidget {
       onGenerateRoute: (settings) {
         return switch (settings.name) {
           '/' => MaterialPageRoute<void>(builder: (_) => const SplashPage()),
-          '/home' => MaterialPageRoute<void>(builder: (_) => const PublicHomePage()),
-          '/consultation' => MaterialPageRoute<void>(builder: (_) => const ConsultationPage()),
-          '/certificate' =>
-            MaterialPageRoute<void>(builder: (_) => const CertificateVerificationPage()),
-          '/certificate/scan' =>
-            MaterialPageRoute<String>(builder: (_) => const QrScannerPage()),
-          '/volunteer' => MaterialPageRoute<void>(builder: (_) => const VolunteerHomePage()),
-          '/volunteer/track' => MaterialPageRoute<void>(builder: (_) => const VolunteerTrackPage()),
-          '/volunteer/form' =>
-            MaterialPageRoute<void>(builder: (_) => const VolunteerRequestFormPage()),
-          '/diagnostics' => MaterialPageRoute<void>(builder: (_) => const ApiDiagnosticsPage()),
+          '/home' => MaterialPageRoute<void>(
+            builder: (_) => const PublicHomePage(),
+          ),
+          '/consultation' => MaterialPageRoute<void>(
+            builder: (_) => const ConsultationPage(),
+          ),
+          '/certificate' => MaterialPageRoute<void>(
+            builder: (_) => const CertificateHomePage(),
+          ),
+          '/certificate/verify' => MaterialPageRoute<void>(
+            builder: (_) => const CertificateVerificationPage(),
+          ),
+          '/certificate/download' => MaterialPageRoute<void>(
+            builder: (_) => const CertificateDownloadPage(),
+          ),
+          '/certificate/scan' => MaterialPageRoute<String>(
+            builder: (_) => const QrScannerPage(),
+          ),
+          '/volunteer' => MaterialPageRoute<void>(
+            builder: (_) => const VolunteerHomePage(),
+          ),
+          '/volunteer/track' => MaterialPageRoute<void>(
+            builder: (_) => const VolunteerTrackPage(),
+          ),
+          '/volunteer/form' => MaterialPageRoute<void>(
+            builder: (_) => const VolunteerRequestFormPage(),
+          ),
+          '/diagnostics' => MaterialPageRoute<void>(
+            builder: (_) => const ApiDiagnosticsPage(),
+          ),
           '/placeholder' => MaterialPageRoute<void>(
-              builder: (_) => PlaceholderPage(
-                    title: (settings.arguments as String?) ?? 'Fonctionnalité',
-                  ),
+            builder: (_) => PlaceholderPage(
+              title: (settings.arguments as String?) ?? 'Fonctionnalité',
             ),
+          ),
           _ => MaterialPageRoute<void>(
-              builder: (_) => const PlaceholderPage(title: 'Page introuvable'),
-            ),
+            builder: (_) => const PlaceholderPage(title: 'Page introuvable'),
+          ),
         };
       },
     );
